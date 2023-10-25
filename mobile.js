@@ -2,88 +2,88 @@ let highestZ = 1;
 
 class Paper {
   holdingPaper = false;
-  touchStartX = 0;
-  touchStartY = 0;
-  touchMoveX = 0;
-  touchMoveY = 0;
-  touchEndX = 0;
-  touchEndY = 0;
-  prevTouchX = 0;
-  prevTouchY = 0;
+  touchX = 0;
+  touchY = 0;
+  posX = 0;
+  posY = 0;
+  prevX = 0;
+  prevY = 0;
   velX = 0;
   velY = 0;
   rotation = Math.random() * 30 - 15;
-  currentPaperX = 0;
-  currentPaperY = 0;
   rotating = false;
 
-  init(paper) {
-    paper.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      if(!this.rotating) {
-        this.touchMoveX = e.touches[0].clientX;
-        this.touchMoveY = e.touches[0].clientY;
-        
-        this.velX = this.touchMoveX - this.prevTouchX;
-        this.velY = this.touchMoveY - this.prevTouchY;
-      }
-        
-      const dirX = e.touches[0].clientX - this.touchStartX;
-      const dirY = e.touches[0].clientY - this.touchStartY;
-      const dirLength = Math.sqrt(dirX*dirX+dirY*dirY);
-      const dirNormalizedX = dirX / dirLength;
-      const dirNormalizedY = dirY / dirLength;
+  constructor(paper) {
+    this.paper = paper;
+    this.init();
+  }
 
-      const angle = Math.atan2(dirNormalizedY, dirNormalizedX);
-      let degrees = 180 * angle / Math.PI;
-      degrees = (360 + Math.round(degrees)) % 360;
-      if(this.rotating) {
-        this.rotation = degrees;
-      }
-
-      if(this.holdingPaper) {
-        if(!this.rotating) {
-          this.currentPaperX += this.velX;
-          this.currentPaperY += this.velY;
-        }
-        this.prevTouchX = this.touchMoveX;
-        this.prevTouchY = this.touchMoveY;
-
-        paper.style.transform = `translateX(${this.currentPaperX}px) translateY(${this.currentPaperY}px) rotateZ(${this.rotation}deg)`;
-      }
-    })
-
-    paper.addEventListener('touchstart', (e) => {
-      if(this.holdingPaper) return; 
-      this.holdingPaper = true;
-      
-      paper.style.zIndex = highestZ;
-      highestZ += 1;
-      
-      this.touchStartX = e.touches[0].clientX;
-      this.touchStartY = e.touches[0].clientY;
-      this.prevTouchX = this.touchStartX;
-      this.prevTouchY = this.touchStartY;
-    });
-    paper.addEventListener('touchend', () => {
-      this.holdingPaper = false;
-      this.rotating = false;
+  init() {
+    this.paper.addEventListener('mousedown', (e) => {
+      this.startDrag(e.clientX, e.clientY);
     });
 
-    // For two-finger rotation on touch screens
-    paper.addEventListener('gesturestart', (e) => {
+    this.paper.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      this.startDrag(touch.clientX, touch.clientY);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      this.drag(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      this.drag(touch.clientX, touch.clientY);
+    });
+
+    window.addEventListener('mouseup', () => {
+      this.stopDrag();
+    });
+
+    window.addEventListener('touchend', () => {
+      this.stopDrag();
+    });
+
+    this.paper.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       this.rotating = true;
     });
-    paper.addEventListener('gestureend', () => {
-      this.rotating = false;
-    });
+  }
+
+  startDrag(x, y) {
+    if (this.rotating) return;
+
+    this.holdingPaper = true;
+    this.paper.style.zIndex = highestZ++;
+    this.prevX = x;
+    this.prevY = y;
+  }
+
+  drag(x, y) {
+    if (!this.holdingPaper) return;
+
+    this.velX = x - this.prevX;
+    this.velY = y - this.prevY;
+
+    this.posX += this.velX;
+    this.posY += this.velY;
+
+    this.paper.style.transform = `translateX(${this.posX}px) translateY(${this.posY}px) rotate(${this.rotation}deg)`;
+
+    this.prevX = x;
+    this.prevY = y;
+  }
+
+  stopDrag() {
+    this.holdingPaper = false;
+    this.rotating = false;
   }
 }
 
-const papers = Array.from(document.querySelectorAll('.paper'));
-
-papers.forEach(paper => {
-  const p = new Paper();
-  p.init(paper);
+const paperElements = Array.from(document.querySelectorAll('.paper'));
+paperElements.forEach((paper, index) => {
+  const p = new Paper(paper);
+  p.posX = 20 * index;
+  p.posY = 20 * index;
 });
